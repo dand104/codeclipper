@@ -1,2 +1,2 @@
-# codeclipper
+# CodeClipper
 
