@@ -8,9 +8,9 @@
 
 namespace codeclipper {
 
-    class GitIgnoreFilter : public IFilter {
+    class PathFilter : public IFilter {
     public:
-        explicit GitIgnoreFilter(const RuntimeConfig& config);
+        explicit PathFilter(const RuntimeConfig& config);
 
         void pushDirectory(const common::fs::path& dir) override;
         void popDirectory() override;

@@ -1,4 +1,4 @@
-#include "GitIgnoreFilter.hxx"
+#include "PathFilter.hxx"
 #include <fstream>
 #include <algorithm>
 
@@ -18,10 +18,10 @@ namespace codeclipper {
         return false;
     }
 
-    GitIgnoreFilter::GitIgnoreFilter(const RuntimeConfig& config)
+    PathFilter::PathFilter(const RuntimeConfig& config)
         : m_config(config) {}
 
-    void GitIgnoreFilter::pushDirectory(const common::fs::path& dir) {
+    void PathFilter::pushDirectory(const common::fs::path& dir) {
         std::vector<IgnoreRule> rules;
         if (!m_config.ignoreGitIgnore) {
             loadGitIgnore(dir);
@@ -30,13 +30,13 @@ namespace codeclipper {
         }
     }
 
-    void GitIgnoreFilter::popDirectory() {
+    void PathFilter::popDirectory() {
         if (!m_rulesStack.empty()) {
             m_rulesStack.pop_back();
         }
     }
 
-    void GitIgnoreFilter::loadGitIgnore(const common::fs::path& dir) {
+    void PathFilter::loadGitIgnore(const common::fs::path& dir) {
         std::vector<IgnoreRule> currentRules;
         const auto gitignorePath = dir / ".gitignore";
 
@@ -69,10 +69,12 @@ namespace codeclipper {
         m_rulesStack.push_back(std::move(currentRules));
     }
 
-    bool GitIgnoreFilter::checkOnlyPatterns(const std::string& pathStr) const {
+    bool PathFilter::checkOnlyPatterns(const std::string& pathStr) const {
         if (m_config.onlyPatterns.empty()) return true;
-
         return std::ranges::any_of(m_config.onlyPatterns, [&](const auto& pat) {
+            if (pat == "." || pat == "./") {
+                return true;
+            }
             if (globMatch(pathStr, pat)) return true;
             if (pathStr.starts_with(pat + "/")) return true;
             if (pat.starts_with(pathStr + "/")) return true;
@@ -82,20 +84,32 @@ namespace codeclipper {
     }
 
 
-    bool GitIgnoreFilter::checkManualIgnorePatterns(const std::string& pathStr) const {
+    bool PathFilter::checkManualIgnorePatterns(const std::string& pathStr) const {
         return std::ranges::any_of(m_config.ignorePatterns, [&](const auto& pat) {
-            return globMatch(pathStr, pat);
-        });
+           if (pat.empty()) return false;
+
+           if (pat.back() == '/') {
+               if (pathStr.starts_with(pat)) return true;
+               std::string folder = pat;
+               folder.pop_back();
+               if (pathStr == folder) return true;
+           }
+
+           return globMatch(pathStr, pat);
+       });
     }
 
-    bool GitIgnoreFilter::checkGitDirectory(const std::string& pathStr) {
+    bool PathFilter::checkGitDirectory(const std::string& pathStr) {
         return pathStr.starts_with(".git") || pathStr.find("/.git") != std::string::npos;
     }
 
-    bool GitIgnoreFilter::isIgnored(const common::fs::path& relativePath, const bool isDirectory) const {
+    bool PathFilter::isIgnored(const common::fs::path& relativePath, const bool isDirectory) const {
         if (relativePath.empty() || relativePath == ".") return false;
 
         const std::string pathStr = relativePath.generic_string();
+        if (pathStr == ".git" || pathStr.starts_with(".git/")) {
+            return true;
+        }
 
         if (m_config.onlyPatterns.empty()) {
             for (const auto& part : relativePath) {
@@ -105,11 +119,9 @@ namespace codeclipper {
                 }
             }
         }
+
         if (!checkOnlyPatterns(pathStr)) return true;
         if (checkManualIgnorePatterns(pathStr)) return true;
-        if (pathStr.starts_with(".git") || pathStr.find("/.git") != std::string::npos) {
-            return true;
-        }
 
         bool ignored = false;
         for (const auto& level : m_rulesStack) {
@@ -122,7 +134,7 @@ namespace codeclipper {
         return ignored;
     }
 
-    bool GitIgnoreFilter::matchRule(const common::fs::path& path, const std::string& pathStr, bool isDirectory, const IgnoreRule& rule) {
+    bool PathFilter::matchRule(const common::fs::path& path, const std::string& pathStr, bool isDirectory, const IgnoreRule& rule) {
         if (rule.pattern.empty()) return false;
 
         if (rule.pattern.find('/') != std::string::npos) {

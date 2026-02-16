@@ -1,7 +1,7 @@
 #include <iostream>
 #include "CliParser.hxx"
 #include "ContextGatherer.hxx"
-#include "GitIgnoreFilter.hxx"
+#include "PathFilter.hxx"
 #include "FileSystem.hxx"
 #include "ConsoleWrite.hxx"
 #include "SystemClipboard.hxx"
@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
     auto fs = std::make_shared<FileSystem>();
     auto writer = std::make_shared<ConsoleWrite>();
     auto clipboard = std::make_shared<SystemClipboard>();
-    auto filter = std::make_shared<GitIgnoreFilter>(config);
+    auto filter = std::make_shared<PathFilter>(config);
 
     const auto app = std::make_shared<ContextGatherer>(
         config,

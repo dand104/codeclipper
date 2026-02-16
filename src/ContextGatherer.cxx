@@ -22,13 +22,13 @@ namespace codeclipper {
             m_writer->writeLine("[Info] Starting traversal at: " + m_config.rootPath.string());
         }
 
-        auto onEnter = [&](const common::fs::path& path) {
-            m_filter->pushDirectory(m_config.rootPath / path);
-            
-            if (path != "." && m_filter->isIgnored(path, true)) {
-                if (m_config.verbose) m_writer->writeLine("[Skip Dir] " + path.string());
-                return false; 
+        auto onEnter = [&](const common::fs::path& relPath) {
+            if (!relPath.empty() && m_filter->isIgnored(relPath, true)) {
+                if (m_config.verbose) m_writer->writeLine("[Skip Dir] " + relPath.string());
+                return false;
             }
+
+            m_filter->pushDirectory(m_config.rootPath / relPath);
             return true;
         };
 
@@ -66,7 +66,9 @@ namespace codeclipper {
 
     void ContextGatherer::processFile(const common::FileEntry& entry) {
         if (m_filter->isIgnored(entry.relativePath, false)) {
-            // verbose log?
+            if (m_config.verbose) {
+                  m_writer->writeLine("[Ignore] " + entry.relativePath.string());
+            }
             return;
         }
 
@@ -86,7 +88,7 @@ namespace codeclipper {
             }
         } else {
             if (m_config.verbose) {
-                m_writer->writeLine("[Skip Binary/Error] " + entry.relativePath.string());
+                m_writer->writeLine("[Skip Binary/Empty] " + entry.relativePath.string());
             }
         }
     }

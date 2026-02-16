@@ -5,7 +5,12 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 
-option(BUILD_TESTS "Build unit-tests for codeclipper" on)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(BUILD_TESTS_DEF OFF) # by default for release
+else ()
+    set(BUILD_TESTS_DEF ON)
+endif ()
+option(BUILD_TESTS "Build unit-tests for codeclipper" ${BUILD_TESTS_DEF} )
 
 # Dependencies
 
@@ -54,7 +59,7 @@ add_library(codeclipper-main OBJECT
         src/CliParser.cxx
         src/ConsoleWrite.cxx
         src/SystemClipboard.cxx
-        src/GitIgnoreFilter.cxx
+        src/PathFilter.cxx
         src/FileSystem.cxx
         src/ContextGatherer.cxx
 )
@@ -69,11 +74,16 @@ target_link_libraries(codeclipper-main PUBLIC
 add_executable(${PROJECT_NAME} src/main.cxx)
 target_link_libraries(${PROJECT_NAME} PRIVATE codeclipper-main)
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT FORCE_NOT_USE_LTO)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON) # LTO by default for release
+endif()
+
 if(BUILD_TESTS)
     enable_testing()
     add_executable(${PROJECT_NAME}Test
             tests/FilterTests.cxx
             tests/FileSystemTests.cxx
+            tests/GathererTests.cxx
     )
     target_link_libraries(${PROJECT_NAME}Test PRIVATE codeclipper-main Catch2::Catch2WithMain)
     add_test(NAME AllTests COMMAND ${PROJECT_NAME}Test)

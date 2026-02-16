@@ -14,7 +14,7 @@ namespace codeclipper {
     }
 
     void CliParser::setup() {
-        m_app.description("Jinni/CodeClipper C++: Copy project context to clipboard.");
+        m_app.description("CodeClipper: Copy project context to clipboard.");
 
         // Root directory argument
         m_app.add_option("path", m_config.rootPath, "Path to the project root directory")

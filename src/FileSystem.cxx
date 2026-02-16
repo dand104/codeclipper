@@ -32,33 +32,38 @@ namespace codeclipper {
     ) {
         common::fs::path relPath;
         if (currentDir != rootDir) {
-            relPath = common::fs::relative(currentDir, rootDir);
+            std::error_code ec;
+            relPath = common::fs::relative(currentDir, rootDir, ec);
+            if (ec) {
+                std::cerr << "[FS Error] Failed to calculate relative path for: " << currentDir << std::endl;
+                return;
+            }
         }
-
         if (!onEnterDir(relPath)) return;
 
         try {
-            for (const auto& entry : common::fs::directory_iterator(currentDir)) {
+            for (const auto& entry : common::fs::directory_iterator(currentDir,
+                 std::filesystem::directory_options::skip_permission_denied)) {
 
                 const auto& entryAbs = entry.path();
                 const auto entryRel = relPath.empty() ? entryAbs.filename() : relPath / entryAbs.filename();
 
-                if (entry.is_directory()) {
-                    visitDirectory(entryAbs, rootDir, onEnterDir, onExitDir, onFile);
-                } else if (entry.is_regular_file()) {
+                std::error_code ec;
+                if (entry.is_directory(ec)) {
+                    if (!entry.is_symlink()) {
+                         visitDirectory(entryAbs, rootDir, onEnterDir, onExitDir, onFile);
+                    }
+                } else if (entry.is_regular_file(ec)) {
                     common::FileEntry fEntry{
                         .relativePath = entryRel,
                         .absolutePath = entryAbs,
-                        .size = entry.file_size()
+                        .size = entry.file_size(ec)
                     };
                     if (!onFile(fEntry)) break;
                 }
             }
-        } catch (const common::fs::filesystem_error& e)
-        {
-            if (e.code() != std::errc::permission_denied) {
-                std::cerr << "[FS Warning] " << e.what() << std::endl;
-            }
+        } catch (const common::fs::filesystem_error& e) {
+            std::cerr << "[FS Warning] Error traversing " << currentDir << ": " << e.what() << std::endl;
         }
 
         (void)onExitDir(relPath);
@@ -72,7 +77,8 @@ namespace codeclipper {
         const auto size = file.tellg();
         file.seekg(0, std::ios::beg);
 
-        if (size <= 0) return "";
+        if (size == -1) return std::nullopt;
+        if (size == 0) return "";
         if (size > 50 * 1024 * 1024) return std::nullopt; // Skip > 50 MB
 
         std::string buffer(static_cast<size_t>(size), '\0');
