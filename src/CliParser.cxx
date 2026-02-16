@@ -16,6 +16,9 @@ namespace codeclipper {
     void CliParser::setup() {
         m_app.description("CodeClipper: Copy project context to clipboard.");
 
+        // MCP Mode
+        m_app.add_flag("-m,--mcp", m_config.runMcpServer, "Run as MCP (Model Context Protocol) Server");
+
         // Root directory argument
         m_app.add_option("path", m_config.rootPath, "Path to the project root directory")
              ->default_val(common::fs::current_path().string());
@@ -29,11 +32,11 @@ namespace codeclipper {
         // Flags
         m_app.add_flag("--no-copy", [&](auto count){ m_config.useClipboard = (count == 0); })
              ->description("Do not copy to clipboard (output to console only)");
-        
+
         m_app.add_flag("-l,--list", m_config.listOnly, "List files only, do not copy content");
-        
+
         m_app.add_flag("-v,--verbose", m_config.verbose, "Enable verbose logging");
-        
+
         m_app.add_flag("--no-gitignore", m_config.ignoreGitIgnore, "Do not read .gitignore files");
     }
 

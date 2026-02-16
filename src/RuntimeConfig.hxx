@@ -17,8 +17,9 @@ namespace codeclipper {
         bool useClipboard = true;
         bool listOnly = false;
         bool verbose = false;
-
         bool ignoreGitIgnore = false;
+
+        bool runMcpServer = false;
     };
 }
 

@@ -12,6 +12,10 @@ else ()
 endif ()
 option(BUILD_TESTS "Build unit-tests for codeclipper" ${BUILD_TESTS_DEF} )
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT FORCE_NOT_LTO)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON) # LTO by default for release
+endif()
+
 # Dependencies
 
     # CLI11
@@ -45,6 +49,15 @@ option(BUILD_TESTS "Build unit-tests for codeclipper" ${BUILD_TESTS_DEF} )
         )
     endif()
 
+    # nlohmann_json
+    FetchContent_Declare(
+            json
+            GIT_REPOSITORY https://github.com/nlohmann/json.git
+            GIT_TAG v3.12.0
+            GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(json)
+
     # Catch2
     if(BUILD_TESTS)
         FetchContent_Declare(
@@ -62,21 +75,22 @@ add_library(codeclipper-main OBJECT
         src/PathFilter.cxx
         src/FileSystem.cxx
         src/ContextGatherer.cxx
+        src/StringWriter.cxx
+        src/StringWriter.hxx
+        src/McpServer.cxx
+        src/McpServer.hxx
 )
 target_include_directories(codeclipper-main PUBLIC src)
 
 target_link_libraries(codeclipper-main PUBLIC
         CLI11::CLI11
         fmt::fmt
+        nlohmann_json::nlohmann_json
         clip
 )
 
 add_executable(${PROJECT_NAME} src/main.cxx)
 target_link_libraries(${PROJECT_NAME} PRIVATE codeclipper-main)
-
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT FORCE_NOT_USE_LTO)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON) # LTO by default for release
-endif()
 
 if(BUILD_TESTS)
     enable_testing()
@@ -84,6 +98,8 @@ if(BUILD_TESTS)
             tests/FilterTests.cxx
             tests/FileSystemTests.cxx
             tests/GathererTests.cxx
+            tests/StringWriterTests.cxx
+            tests/McpTests.cxx
     )
     target_link_libraries(${PROJECT_NAME}Test PRIVATE codeclipper-main Catch2::Catch2WithMain)
     add_test(NAME AllTests COMMAND ${PROJECT_NAME}Test)

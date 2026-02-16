@@ -5,6 +5,7 @@
 #include "FileSystem.hxx"
 #include "ConsoleWrite.hxx"
 #include "SystemClipboard.hxx"
+#include "McpServer.hxx"
 
 int main(int argc, char** argv) {
     using namespace codeclipper;
@@ -15,6 +16,12 @@ int main(int argc, char** argv) {
     }
 
     auto config = parser.getConfig();
+
+    if (config.runMcpServer) {
+        McpServer server;
+        server.run(std::cin, std::cout);
+        return 0;
+    }
 
     if (!common::fs::exists(config.rootPath)) {
         std::cerr << "Error: Path does not exist: " << config.rootPath.string() << std::endl;
