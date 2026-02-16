@@ -69,8 +69,6 @@ namespace codeclipper {
         output << resp.dump() << std::endl;
     }
 
-    // ... (handleInitialize, handleListTools, handleCallTool остаются БЕЗ ИЗМЕНЕНИЙ) ...
-    // Скопируйте реализацию этих методов из предыдущего ответа
 
     nlohmann::json McpServer::handleInitialize(const json&) {
         return {
