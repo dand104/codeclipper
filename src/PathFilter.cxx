@@ -5,17 +5,23 @@
 namespace codeclipper {
 
     static bool globMatch(const std::string_view str, const std::string_view pattern) {
-        if (pattern.empty()) return str.empty();
-        if (pattern == "*") return true;
+        size_t s = 0, p = 0, lastWildcardIdx = std::string::npos, sBacktrackIdx = 0;
 
-        if (pattern[0] == '*') {
-            return globMatch(str, pattern.substr(1)) ||
-                   (!str.empty() && globMatch(str.substr(1), pattern));
+        while (s < str.size()) {
+            if (p < pattern.size() && (pattern[p] == '?' || pattern[p] == str[s])) {
+                s++; p++;
+            } else if (p < pattern.size() && pattern[p] == '*') {
+                lastWildcardIdx = p++;
+                sBacktrackIdx = s;
+            } else if (lastWildcardIdx != std::string::npos) {
+                p = lastWildcardIdx + 1;
+                s = ++sBacktrackIdx;
+            } else {
+                return false;
+            }
         }
-        if (!str.empty() && (pattern[0] == '?' || pattern[0] == str[0])) {
-            return globMatch(str.substr(1), pattern.substr(1));
-        }
-        return false;
+        while (p < pattern.size() && pattern[p] == '*') p++;
+        return p == pattern.size();
     }
 
     PathFilter::PathFilter(const RuntimeConfig& config)
