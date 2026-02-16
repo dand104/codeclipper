@@ -7,13 +7,42 @@ include(FetchContent)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(BUILD_TESTS_DEF OFF) # by default for release
+    if(NOT FORCE_NOT_LTO)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON) # LTO by default for release
+    endif()
 else ()
     set(BUILD_TESTS_DEF ON)
 endif ()
-option(BUILD_TESTS "Build unit-tests for codeclipper" ${BUILD_TESTS_DEF} )
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT FORCE_NOT_LTO)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON) # LTO by default for release
+option(BUILD_TESTS "Build unit-tests for codeclipper" ${BUILD_TESTS_DEF} )
+option(ENABLE_COVERAGE "Enable code coverage generation" OFF)
+
+if(ENABLE_COVERAGE)
+    if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        message(FATAL_ERROR "Code coverage requires Clang or GCC")
+    endif()
+    find_program(LCOV_PATH lcov REQUIRED)
+    find_program(GENHTML_PATH genhtml REQUIRED)
+    set(BUILD_TESTS ON)
+    add_compile_options(--coverage -g -O0)
+    add_link_options(--coverage)
+
+    add_custom_target(coverage
+            COMMAND ${LCOV_PATH} --directory . --zerocounters
+            COMMAND ./codeclipperTest
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file coverage.info
+            COMMAND ${LCOV_PATH} --remove coverage.info
+            '/usr/*'
+            '*/_deps/*'
+            '*/tests/*'
+            --output-file coverage_cleaned.info
+            COMMAND ${GENHTML_PATH} -o coverage_report coverage_cleaned.info
+            COMMAND ${CMAKE_COMMAND} -E echo "Coverage report generated in: ${CMAKE_BINARY_DIR}/coverage_report/index.html"
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Generating code coverage report..."
+    )
+
+    add_dependencies(coverage ${PROJECT_NAME}Test)
 endif()
 
 # Dependencies
