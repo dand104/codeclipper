@@ -59,6 +59,8 @@ endif()
             GIT_SHALLOW    TRUE
     )
     set(EXPECTED_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(EXPECTED_BUILD_PACKAGE_DEB OFF CACHE BOOL "" FORCE)
+
     FetchContent_MakeAvailable(tlexpected)
 
     # {fmt}
@@ -133,6 +135,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE codeclipper-main)
 
 if(BUILD_TESTS)
     enable_testing()
+    include(Catch)
+
     add_executable(${PROJECT_NAME}Test
             tests/FilterTests.cxx
             tests/FileSystemTests.cxx
@@ -141,11 +145,12 @@ if(BUILD_TESTS)
             tests/McpTests.cxx
     )
     target_link_libraries(${PROJECT_NAME}Test PRIVATE codeclipper-main Catch2::Catch2WithMain)
-    add_test(NAME AllTests COMMAND ${PROJECT_NAME}Test)
+    catch_discover_tests(${PROJECT_NAME}Test)
 endif ()
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /WX /permissive-)
+    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 elseif(CLANG OR GCC)
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror -pedantic)
 endif()
