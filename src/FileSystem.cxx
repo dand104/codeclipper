@@ -13,10 +13,10 @@ namespace codeclipper {
         const FileCallback onFile
     ) const {
         std::error_code ec;
-        if (!common::fs::exists(root, ec)) return std::unexpected(common::ErrorCode::PathNotFound);
+        if (!common::fs::exists(root, ec)) return tl::unexpected(common::ErrorCode::PathNotFound);
 
         const auto absRoot = common::fs::canonical(root, ec);
-        if (ec) return std::unexpected(common::ErrorCode::AccessDenied);
+        if (ec) return tl::unexpected(common::ErrorCode::AccessDenied);
 
         visitDirectory(absRoot, absRoot, onEnterDir, onExitDir, onFile);
 

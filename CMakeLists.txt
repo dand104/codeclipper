@@ -1,20 +1,15 @@
 cmake_minimum_required(VERSION 3.20)
 project(codeclipper LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(BUILD_TESTS_DEF OFF) # by default for release
-    if(NOT FORCE_NOT_LTO)
-        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON) # LTO by default for release
-    endif()
-else ()
-    set(BUILD_TESTS_DEF ON)
-endif ()
+if(NOT FORCE_NOT_LTO)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON) # LTO by default for release
+endif()
 
-option(BUILD_TESTS "Build unit-tests for codeclipper" ${BUILD_TESTS_DEF} )
+option(BUILD_TESTS "Build unit-tests for codeclipper" ON )
 option(ENABLE_COVERAGE "Enable code coverage generation" OFF)
 
 if(ENABLE_COVERAGE)
@@ -52,14 +47,26 @@ endif()
             cli11
             GIT_REPOSITORY https://github.com/CLIUtils/CLI11
             GIT_TAG v2.6.1
+            GIT_SHALLOW    TRUE
     )
     FetchContent_MakeAvailable(cli11)
+
+    # tl/expected
+    FetchContent_Declare(
+            tlexpected
+            GIT_REPOSITORY https://github.com/TartanLlama/expected.git
+            GIT_TAG v1.3.1
+            GIT_SHALLOW    TRUE
+    )
+    set(EXPECTED_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(tlexpected)
 
     # {fmt}
     FetchContent_Declare(
             fmt
             GIT_REPOSITORY https://github.com/fmtlib/fmt.git
             GIT_TAG 12.1.0
+            GIT_SHALLOW    TRUE
     )
     FetchContent_MakeAvailable(fmt)
 
@@ -68,6 +75,7 @@ endif()
             clip
             GIT_REPOSITORY https://github.com/dacap/clip.git
             GIT_TAG v1.13
+            GIT_SHALLOW    TRUE
     )
     set(CLIP_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(CLIP_TESTS OFF CACHE BOOL "" FORCE)
@@ -93,6 +101,7 @@ endif()
                 Catch2
                 GIT_REPOSITORY https://github.com/catchorg/Catch2.git
                 GIT_TAG v3.12.0
+                GIT_SHALLOW    TRUE
         )
         FetchContent_MakeAvailable(Catch2)
     endif()
@@ -113,6 +122,7 @@ target_include_directories(codeclipper-main PUBLIC src)
 
 target_link_libraries(codeclipper-main PUBLIC
         CLI11::CLI11
+        tl::expected
         fmt::fmt
         nlohmann_json::nlohmann_json
         clip

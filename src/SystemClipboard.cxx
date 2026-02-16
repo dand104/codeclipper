@@ -9,13 +9,13 @@ namespace codeclipper {
         if (clip::set_text(str)) {
             return {};
         }
-        return std::unexpected(common::ErrorCode::ClipboardFailure);
+        return tl::unexpected(common::ErrorCode::ClipboardFailure);
     }
 
     common::Result SystemClipboard::clear() {
         if (clip::clear()) {
             return {};
         }
-        return std::unexpected(common::ErrorCode::ClipboardFailure);
+        return tl::unexpected(common::ErrorCode::ClipboardFailure);
     }
 }
