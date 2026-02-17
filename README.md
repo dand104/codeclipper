@@ -18,13 +18,11 @@
 
 ## Building
 
-### Standard Build (Release)
+To build release version and install it follow commands:
 
 ```bash
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build .
+cmake . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
+cmake --build build
 ```
 
 ### Build with Sanitizers (Debug)
@@ -32,10 +30,8 @@ cmake --build .
 To enable Address and Undefined Behavior sanitizers for development (GCC/Clang):
 
 ```bash
-mkdir build_debug
-cd build_debug
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZER=ON
-cmake --build .
+cmake . -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZER=ON -B build_debug
+cmake --build build_debug
 ```
 
 ### Running Tests

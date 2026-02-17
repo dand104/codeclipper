@@ -68,11 +68,16 @@ endif()
             GIT_REPOSITORY https://github.com/TartanLlama/expected.git
             GIT_TAG v1.3.1
             GIT_SHALLOW    TRUE
+            SOURCE_SUBDIR  "N/A"
     )
-    set(EXPECTED_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(EXPECTED_BUILD_PACKAGE_DEB OFF CACHE BOOL "" FORCE)
-
     FetchContent_MakeAvailable(tlexpected)
+    if(NOT TARGET tl::expected)
+        add_library(tl_expected_headers INTERFACE)
+        target_include_directories(tl_expected_headers SYSTEM INTERFACE
+                "${tlexpected_SOURCE_DIR}/include"
+        )
+        add_library(tl::expected ALIAS tl_expected_headers)
+    endif()
 
     # {fmt}
     FetchContent_Declare(
@@ -91,6 +96,7 @@ endif()
             GIT_SHALLOW    TRUE
     )
     set(CLIP_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(CLIP_INSTALL OFF CACHE BOOL "" FORCE)
     set(CLIP_TESTS OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(clip)
     if(TARGET clip)
@@ -166,3 +172,9 @@ if(MSVC)
 elseif(CLANG OR GCC)
     target_compile_options(${CODECLIP_EXECUTABLE_NAME} PRIVATE -Wall -Wextra -Werror -pedantic)
 endif()
+
+include(GNUInstallDirs)
+install(TARGETS ${CODECLIP_EXECUTABLE_NAME}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
