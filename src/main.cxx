@@ -6,10 +6,11 @@
 #include "ConsoleWrite.hxx"
 #include "SystemClipboard.hxx"
 #include "McpServer.hxx"
+#include "Platform.hxx"
 
 int main(int argc, char** argv) {
     using namespace codeclipper;
-
+    setupConsole();
     const CliParser parser(argc, argv);
     if (parser.shouldExit()) {
         return parser.getExitCode();

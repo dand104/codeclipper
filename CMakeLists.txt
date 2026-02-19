@@ -125,6 +125,12 @@ endif()
         FetchContent_MakeAvailable(Catch2)
     endif()
 
+if(WIN32)
+    set(PLATFORM_SOURCE src/Platform.win32.cxx)
+else()
+    set(PLATFORM_SOURCE src/Platform.unix.cxx)
+endif()
+
 add_library(codeclipper-main OBJECT
         src/CliParser.cxx
         src/ConsoleWrite.cxx
@@ -136,6 +142,8 @@ add_library(codeclipper-main OBJECT
         src/StringWriter.hxx
         src/McpServer.cxx
         src/McpServer.hxx
+        src/Platform.hxx
+        ${PLATFORM_SOURCE}
 )
 
 target_include_directories(codeclipper-main PUBLIC src)

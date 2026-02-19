@@ -4,8 +4,9 @@
 namespace codeclipper {
 
     void StringWriter::writeHeader(const common::fs::path& relativePath) {
-        m_buffer << "```path=" << relativePath.generic_string() << "\n";
-    }
+        std::string p = common::pathToString(relativePath);
+        std::ranges::replace(p, '\\', '/');
+        m_buffer << "```path=" << p << "\n";    }
 
     void StringWriter::writeContent(std::string_view content) {
         m_buffer << content << "\n```\n";

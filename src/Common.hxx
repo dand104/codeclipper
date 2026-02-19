@@ -25,6 +25,11 @@ namespace codeclipper::common {
         Unknown
     };
 
+    inline std::string pathToString(const fs::path& p) {
+        const auto u8str = p.u8string();
+        return std::string{reinterpret_cast<const char*>(u8str.c_str())};
+    }
+
     using Result = tl::expected<void, ErrorCode>;
 }
 #endif //CODECLIPPER_DEFINITIONS_HXX

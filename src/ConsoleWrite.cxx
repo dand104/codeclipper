@@ -10,7 +10,7 @@ namespace codeclipper {
     }
 
     void ConsoleWrite::writeHeader(const common::fs::path& relativePath) {
-        fmt::print("```path={}\n", relativePath.string());
+        fmt::print("```path={}\n", common::pathToString(relativePath));
     }
 
     void ConsoleWrite::writeContent(std::string_view content) {

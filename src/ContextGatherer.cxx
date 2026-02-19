@@ -83,12 +83,15 @@ namespace codeclipper {
             m_writer->writeContent(*content);
 
             if (m_config.useClipboard) {
-                m_clipboardBuffer += "```path=" + entry.relativePath.generic_string() + "\n";
+                std::string p = common::pathToString(entry.relativePath);
+                std::ranges::replace(p, '\\', '/');
+                m_clipboardBuffer += "```path=" + p + "\n";
+
                 m_clipboardBuffer += *content + "\n```\n";
             }
         } else {
             if (m_config.verbose) {
-                m_writer->writeLine("[Skip Binary/Empty] " + entry.relativePath.string());
+                m_writer->writeLine("[Skip Binary/Empty] " + common::pathToString(entry.relativePath));
             }
         }
     }

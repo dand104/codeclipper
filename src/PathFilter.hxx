@@ -18,7 +18,8 @@ namespace codeclipper {
 
     private:
         const RuntimeConfig& m_config;
-
+        std::vector<std::string> m_normalizedOnlyPatterns;
+        std::vector<std::string> m_normalizedIgnorePatterns;
         struct IgnoreRule {
             std::string pattern;
             bool isNegation;
@@ -29,6 +30,7 @@ namespace codeclipper {
         std::vector<std::vector<IgnoreRule>> m_rulesStack;
         void loadGitIgnore(const common::fs::path& dir);
 
+        static std::string normalizePattern(std::string_view rawPattern);
         [[nodiscard]] bool checkOnlyPatterns(const std::string& pathStr) const;
         [[nodiscard]] bool checkManualIgnorePatterns(const std::string& pathStr) const;
         [[nodiscard]] static bool checkGitDirectory(const std::string& pathStr) ;

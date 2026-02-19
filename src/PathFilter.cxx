@@ -25,7 +25,18 @@ namespace codeclipper {
     }
 
     PathFilter::PathFilter(const RuntimeConfig& config)
-        : m_config(config) {}
+        : m_config(config)
+    {
+        m_normalizedOnlyPatterns.reserve(config.onlyPatterns.size());
+        for (const auto& pat : config.onlyPatterns) {
+            m_normalizedOnlyPatterns.push_back(normalizePattern(pat));
+        }
+
+        m_normalizedIgnorePatterns.reserve(config.ignorePatterns.size());
+        for (const auto& pat : config.ignorePatterns) {
+            m_normalizedIgnorePatterns.push_back(normalizePattern(pat));
+        }
+    }
 
     void PathFilter::pushDirectory(const common::fs::path& dir) {
         std::vector<IgnoreRule> rules;
@@ -40,6 +51,23 @@ namespace codeclipper {
         if (!m_rulesStack.empty()) {
             m_rulesStack.pop_back();
         }
+    }
+
+    std::string PathFilter::normalizePattern(const std::string_view rawPattern) {
+        std::string p(rawPattern);
+
+        std::ranges::replace(p, '\\', '/');
+
+        const auto new_end = std::ranges::unique(p, [](char a, char b){
+            return a == '/' && b == '/';
+        }).begin();
+        p.erase(new_end, p.end());
+
+        if (p.starts_with("./")) {
+            p = p.substr(2);
+        }
+
+        return p;
     }
 
     void PathFilter::loadGitIgnore(const common::fs::path& dir) {
@@ -77,12 +105,12 @@ namespace codeclipper {
 
     bool PathFilter::checkOnlyPatterns(const std::string& pathStr) const {
         if (m_config.onlyPatterns.empty()) return true;
-        return std::ranges::any_of(m_config.onlyPatterns, [&](const auto& pat) {
+        return std::ranges::any_of(m_normalizedOnlyPatterns, [&](const auto& pat) {
             if (pat == "." || pat == "./") {
                 return true;
             }
             if (globMatch(pathStr, pat)) return true;
-            if (pathStr.starts_with(pat + "/")) return true;
+            if (pathStr.starts_with(pat) && (pat.back() == '/' || pathStr[pat.size()] == '/')) return true;
             if (pat.starts_with(pathStr + "/")) return true;
 
             return false;
@@ -91,7 +119,7 @@ namespace codeclipper {
 
 
     bool PathFilter::checkManualIgnorePatterns(const std::string& pathStr) const {
-        return std::ranges::any_of(m_config.ignorePatterns, [&](const auto& pat) {
+        return std::ranges::any_of(m_normalizedIgnorePatterns, [&](const auto& pat) {
            if (pat.empty()) return false;
 
            if (pat.back() == '/') {
@@ -112,7 +140,9 @@ namespace codeclipper {
     bool PathFilter::isIgnored(const common::fs::path& relativePath, const bool isDirectory) const {
         if (relativePath.empty() || relativePath == ".") return false;
 
-        const std::string pathStr = relativePath.generic_string();
+        std::string pathStr = common::pathToString(relativePath);
+        std::ranges::replace(pathStr, '\\', '/');
+
         if (pathStr == ".git" || pathStr.starts_with(".git/")) {
             return true;
         }
@@ -152,7 +182,7 @@ namespace codeclipper {
             return false;
         }
         return std::ranges::any_of(path, [&](const auto& part) {
-            return globMatch(part.string(), rule.pattern);
+            return globMatch(common::pathToString(part), rule.pattern);
         });
     }
 }
