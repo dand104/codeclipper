@@ -18,11 +18,16 @@
 
 ## Building
 
-To build release version and install it follow commands:
+To build release version from source follow commands:
 
 ```bash
 cmake . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
 cmake --build build
+```
+
+Then install it:
+```bash
+cmake --install build --prefix <path>
 ```
 
 ### Build with Sanitizers (Debug)

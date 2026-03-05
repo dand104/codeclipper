@@ -175,6 +175,7 @@ if(BUILD_TESTS)
 endif ()
 
 if(MSVC)
+    target_sources(${CODECLIP_EXECUTABLE_NAME} PRIVATE src/resource.rc)
     target_compile_options(${CODECLIP_EXECUTABLE_NAME} PRIVATE /W4 /WX /permissive-)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${CODECLIP_EXECUTABLE_NAME})
 elseif(CLANG OR GCC)
