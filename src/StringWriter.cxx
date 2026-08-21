@@ -1,6 +1,6 @@
 #include "StringWriter.hxx"
 #include <fmt/core.h>
-
+#include <algorithm>
 namespace codeclipper {
 
     void StringWriter::writeHeader(const common::fs::path& relativePath) {

@@ -10,7 +10,7 @@ if(NOT FORCE_NOT_LTO)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON) # LTO by default for release
 endif()
 
-option(BUILD_TESTS "Build unit-tests for codeclipper" ON )
+option(BUILD_TESTING "Build unit-tests for codeclipper" ON )
 option(ENABLE_COVERAGE "Enable code coverage generation" OFF)
 option(ENABLE_SANITIZER "Enable Address and Undefined sanitizers" OFF)
 
@@ -97,6 +97,8 @@ endif()
     )
     set(CLIP_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(CLIP_INSTALL OFF CACHE BOOL "" FORCE)
+    set(CLIP_ENABLE_IMAGE OFF CACHE BOOL "" FORCE)
+    set(CLIP_X11_WITH_PNG OFF CACHE BOOL "" FORCE)
     set(CLIP_TESTS OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(clip)
     if(TARGET clip)

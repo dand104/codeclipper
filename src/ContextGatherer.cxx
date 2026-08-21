@@ -1,6 +1,7 @@
 #include "ContextGatherer.hxx"
 #include <iostream>
 #include <utility>
+#include <algorithm>
 
 namespace codeclipper {
 
