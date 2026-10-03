@@ -1,13 +1,17 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 4.2)
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+set(CMAKE_CXX_MODULE_STD ON)
+
 project(codeclipper LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CODECLIP_EXECUTABLE_NAME cclip)
-include(FetchContent)
+set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
-if(NOT FORCE_NOT_LTO)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON) # LTO by default for release
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(-stdlib=libc++)
+    add_link_options(-stdlib=libc++)
 endif()
 
 option(BUILD_TESTING "Build unit-tests for codeclipper" ON )
@@ -15,153 +19,131 @@ option(ENABLE_COVERAGE "Enable code coverage generation" OFF)
 option(ENABLE_SANITIZER "Enable Address and Undefined sanitizers" OFF)
 
 if(ENABLE_SANITIZER AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
-        message(STATUS "Sanitizers enabled (Address, Undefined)")
-        add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-        add_link_options(-fsanitize=address)
+    message(STATUS "Sanitizers enabled (Address, Undefined)")
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+endif()
+
+if(NOT CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE AND NOT FORCE_NOT_LTO)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 endif()
 
 # Coverage for gcov
 
-    if(ENABLE_COVERAGE)
-        if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-            message(FATAL_ERROR "Code coverage requires Clang or GCC")
-        endif()
-
-        find_program(LCOV_PATH lcov REQUIRED)
-        find_program(GENHTML_PATH genhtml REQUIRED)
-        set(BUILD_TESTS ON)
-        add_compile_options(--coverage -g -O0)
-        add_link_options(--coverage)
-
-        add_custom_target(coverage
-                COMMAND ${LCOV_PATH} --directory . --zerocounters
-                COMMAND ./codeclipperTest
-                COMMAND ${LCOV_PATH} --directory . --capture --output-file coverage.info
-                COMMAND ${LCOV_PATH} --remove coverage.info
-                '/usr/*'
-                '*/_deps/*'
-                '*/tests/*'
-                --output-file coverage_cleaned.info
-                COMMAND ${GENHTML_PATH} -o coverage_report coverage_cleaned.info
-                COMMAND ${CMAKE_COMMAND} -E echo "Coverage report generated in: ${CMAKE_BINARY_DIR}/coverage_report/index.html"
-                WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-                COMMENT "Generating code coverage report..."
-        )
-
-        add_dependencies(coverage ${PROJECT_NAME}Test)
+if(ENABLE_COVERAGE)
+    if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        message(FATAL_ERROR "Code coverage requires Clang or GCC")
     endif()
+
+    find_program(LCOV_PATH lcov REQUIRED)
+    find_program(GENHTML_PATH genhtml REQUIRED)
+    set(BUILD_TESTS ON)
+    add_compile_options(--coverage -g -O0)
+    add_link_options(--coverage)
+
+    add_custom_target(coverage
+            COMMAND ${LCOV_PATH} --directory . --zerocounters
+            COMMAND ./codeclipperTest
+            COMMAND ${LCOV_PATH} --directory . --capture --output-file coverage.info
+            COMMAND ${LCOV_PATH} --remove coverage.info
+            '/usr/*'
+            '*/_deps/*'
+            '*/tests/*'
+            --output-file coverage_cleaned.info
+            COMMAND ${GENHTML_PATH} -o coverage_report coverage_cleaned.info
+            COMMAND ${CMAKE_COMMAND} -E echo "Coverage report generated in: ${CMAKE_BINARY_DIR}/coverage_report/index.html"
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Generating code coverage report..."
+    )
+
+    add_dependencies(coverage ${PROJECT_NAME}Test)
+endif()
 
 # Dependencies
+include(FetchContent)
 
-    # CLI11
-    FetchContent_Declare(
-            cli11
-            GIT_REPOSITORY https://github.com/CLIUtils/CLI11
-            GIT_TAG v2.6.1
-            GIT_SHALLOW    TRUE
+# CLI11
+FetchContent_Declare(
+        cli11
+        GIT_REPOSITORY https://github.com/CLIUtils/CLI11
+        GIT_TAG v2.6.1
+        GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(cli11)
+
+# clip
+FetchContent_Declare(
+        clip
+        GIT_REPOSITORY https://github.com/dacap/clip.git
+        GIT_TAG v1.13
+        GIT_SHALLOW    TRUE
+)
+set(CLIP_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(CLIP_INSTALL OFF CACHE BOOL "" FORCE)
+set(CLIP_ENABLE_IMAGE OFF CACHE BOOL "" FORCE)
+set(CLIP_X11_WITH_PNG OFF CACHE BOOL "" FORCE)
+set(CLIP_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(clip)
+if(TARGET clip)
+    target_include_directories(clip PUBLIC
+            $<BUILD_INTERFACE:${clip_SOURCE_DIR}>
     )
-    FetchContent_MakeAvailable(cli11)
+endif()
 
-    # tl/expected
+# nlohmann_json
+FetchContent_Declare(
+        json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG v3.12.0
+        GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(json)
+# Catch2
+if(BUILD_TESTING)
     FetchContent_Declare(
-            tlexpected
-            GIT_REPOSITORY https://github.com/TartanLlama/expected.git
-            GIT_TAG v1.3.1
-            GIT_SHALLOW    TRUE
-            SOURCE_SUBDIR  "N/A"
-    )
-    FetchContent_MakeAvailable(tlexpected)
-    if(NOT TARGET tl::expected)
-        add_library(tl_expected_headers INTERFACE)
-        target_include_directories(tl_expected_headers SYSTEM INTERFACE
-                "${tlexpected_SOURCE_DIR}/include"
-        )
-        add_library(tl::expected ALIAS tl_expected_headers)
-    endif()
-
-    # {fmt}
-    FetchContent_Declare(
-            fmt
-            GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-            GIT_TAG 12.1.0
-            GIT_SHALLOW    TRUE
-    )
-    FetchContent_MakeAvailable(fmt)
-
-    # clip
-    FetchContent_Declare(
-            clip
-            GIT_REPOSITORY https://github.com/dacap/clip.git
-            GIT_TAG v1.13
-            GIT_SHALLOW    TRUE
-    )
-    set(CLIP_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(CLIP_INSTALL OFF CACHE BOOL "" FORCE)
-    set(CLIP_ENABLE_IMAGE OFF CACHE BOOL "" FORCE)
-    set(CLIP_X11_WITH_PNG OFF CACHE BOOL "" FORCE)
-    set(CLIP_TESTS OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(clip)
-    if(TARGET clip)
-        target_include_directories(clip PUBLIC
-                $<BUILD_INTERFACE:${clip_SOURCE_DIR}>
-        )
-    endif()
-
-    # nlohmann_json
-    FetchContent_Declare(
-            json
-            GIT_REPOSITORY https://github.com/nlohmann/json.git
+            Catch2
+            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
             GIT_TAG v3.12.0
             GIT_SHALLOW    TRUE
     )
-    FetchContent_MakeAvailable(json)
-
-    # Catch2
-    if(BUILD_TESTS)
-        FetchContent_Declare(
-                Catch2
-                GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-                GIT_TAG v3.12.0
-                GIT_SHALLOW    TRUE
-        )
-        FetchContent_MakeAvailable(Catch2)
-    endif()
-
-if(WIN32)
-    set(PLATFORM_SOURCE src/Platform.win32.cxx)
-else()
-    set(PLATFORM_SOURCE src/Platform.unix.cxx)
+    FetchContent_MakeAvailable(Catch2)
 endif()
 
-add_library(codeclipper-main OBJECT
-        src/CliParser.cxx
-        src/ConsoleWrite.cxx
-        src/SystemClipboard.cxx
-        src/PathFilter.cxx
-        src/FileSystem.cxx
-        src/ContextGatherer.cxx
-        src/StringWriter.cxx
-        src/StringWriter.hxx
-        src/McpServer.cxx
-        src/McpServer.hxx
-        src/Platform.hxx
-        ${PLATFORM_SOURCE}
+set(PLATFORM_IMPL_SRC)
+if(WIN32)
+    set(PLATFORM_IMPL_SRC src/platform.win32.cxx)
+else()
+    set(PLATFORM_IMPL_SRC src/platform.unix.cxx)
+endif()
+
+add_library(codeclipper_lib)
+target_sources(codeclipper_lib
+        PUBLIC
+        FILE_SET CXX_MODULES FILES
+        src/platform.cxx
+        src/config.cxx
+        src/clipboard.cxx
+        src/filter.cxx
+        src/engine.cxx
+        src/cli.cxx
+        src/mcp.cxx
+        src/codeclipper.cxx
+        PRIVATE
+        ${PLATFORM_IMPL_SRC}
+
+
 )
 
-target_include_directories(codeclipper-main PUBLIC src)
-
-target_link_libraries(codeclipper-main PUBLIC
+target_link_libraries(codeclipper_lib PUBLIC
         CLI11::CLI11
-        tl::expected
-        fmt::fmt
         nlohmann_json::nlohmann_json
         clip
 )
 
-add_executable(${CODECLIP_EXECUTABLE_NAME} src/main.cxx)
-target_link_libraries(${CODECLIP_EXECUTABLE_NAME} PRIVATE codeclipper-main)
+add_executable(${CODECLIP_EXECUTABLE_NAME} main.cxx)
+target_link_libraries(${CODECLIP_EXECUTABLE_NAME} PRIVATE codeclipper_lib)
 
-if(BUILD_TESTS)
+if(BUILD_TESTING)
     enable_testing()
     include(Catch)
 
@@ -169,10 +151,9 @@ if(BUILD_TESTS)
             tests/FilterTests.cxx
             tests/FileSystemTests.cxx
             tests/GathererTests.cxx
-            tests/StringWriterTests.cxx
             tests/McpTests.cxx
     )
-    target_link_libraries(${PROJECT_NAME}Test PRIVATE codeclipper-main Catch2::Catch2WithMain)
+    target_link_libraries(${PROJECT_NAME}Test PRIVATE codeclipper_lib Catch2::Catch2WithMain)
     catch_discover_tests(${PROJECT_NAME}Test)
 endif ()
 
@@ -180,7 +161,7 @@ if(MSVC)
     target_sources(${CODECLIP_EXECUTABLE_NAME} PRIVATE src/resource.rc)
     target_compile_options(${CODECLIP_EXECUTABLE_NAME} PRIVATE /W4 /WX /permissive-)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${CODECLIP_EXECUTABLE_NAME})
-elseif(CLANG OR GCC)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(${CODECLIP_EXECUTABLE_NAME} PRIVATE -Wall -Wextra -Werror -pedantic)
 endif()
 

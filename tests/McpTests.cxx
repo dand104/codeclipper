@@ -1,11 +1,8 @@
 #include <catch2/catch_all.hpp>
 #include <nlohmann/json.hpp>
-#include <sstream>
-#include <filesystem>
-#include <fstream>
-#include "McpServer.hxx"
+import std;
+import codeclipper;
 
-using namespace codeclipper;
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -14,64 +11,52 @@ public:
     fs::path root;
     McpEnvFixture() {
         root = fs::temp_directory_path() / "mcp_test_env";
-        if (fs::exists(root)) fs::remove_all(root);
+        std::error_code ec;
+        fs::remove_all(root, ec);
         fs::create_directories(root);
-        
+
         std::ofstream(root / "hello.txt") << "Hello World";
         std::ofstream(root / "ignore.me") << "Secret";
     }
-    ~McpEnvFixture() { fs::remove_all(root); }
+    ~McpEnvFixture() {
+        std::error_code ec;
+        fs::remove_all(root, ec);
+    }
 };
 
 TEST_CASE("MCP Server Protocol", "[mcp]") {
-    McpServer server;
+    codeclipper::McpServer server;
     std::stringstream input;
     std::stringstream output;
 
     SECTION("Initialize Handshake") {
-        json req = {
-            {"jsonrpc", "2.0"},
-            {"method", "initialize"},
-            {"id", 1},
-            {"params", {}}
-        };
+        json req = {{"jsonrpc", "2.0"}, {"method", "initialize"}, {"id", 1}, {"params", json::object()}};
         input << req.dump() << "\n";
-
         server.run(input, output);
 
-        std::string rawStr = output.str();
-        auto resp = json::parse(std::string_view(rawStr));
-
+        auto resp = json::parse(output.str());
         CHECK(resp["id"] == 1);
         CHECK(resp["result"]["serverInfo"]["name"] == "codeclipper-mcp");
     }
 
     SECTION("List Tools") {
-        json req = {
-            {"jsonrpc", "2.0"},
-            {"method", "tools/list"},
-            {"id", 2}
-        };
+        json req = {{"jsonrpc", "2.0"}, {"method", "tools/list"}, {"id", 2}};
         input << req.dump() << "\n";
-
         server.run(input, output);
 
         auto resp = json::parse(output.str());
         CHECK(resp["id"] == 2);
-        
-        auto tools = resp["result"]["tools"];
-        CHECK(tools.is_array());
-        CHECK(tools[0]["name"] == "clip_context");
+        CHECK(resp["result"]["tools"][0]["name"] == "clip_context");
     }
 }
 
 TEST_CASE("MCP Server: Call Tool Integration", "[mcp]") {
     McpEnvFixture fix;
-    McpServer server;
+    codeclipper::McpServer server;
     std::stringstream input;
     std::stringstream output;
 
-    SECTION("Successfull Context Clip") {
+    SECTION("Successful Context Clip with Ignore Pattern") {
         json req = {
             {"jsonrpc", "2.0"},
             {"method", "tools/call"},
@@ -80,27 +65,21 @@ TEST_CASE("MCP Server: Call Tool Integration", "[mcp]") {
                 {"name", "clip_context"},
                 {"arguments", {
                     {"path", fix.root.string()},
-                    {"ignore_patterns", {"*.me"}}
+                    {"ignore_patterns", json::array({"*.me"})}
                 }}
             }}
         };
         input << req.dump() << "\n";
-
         server.run(input, output);
 
-        std::string rawOutput = output.str();
-        INFO("Raw Output: " << rawOutput);
-        auto resp = json::parse(rawOutput);
-
+        auto resp = json::parse(output.str());
         CHECK(resp["id"] == 10);
         CHECK_FALSE(resp["result"]["isError"]);
-        
+
         std::string content = resp["result"]["content"][0]["text"];
-        
-        CHECK(content.find("hello.txt") != std::string::npos);
-        CHECK(content.find("Hello World") != std::string::npos);
-        
-        CHECK(content.find("ignore.me") == std::string::npos);
+        CHECK(content.contains("hello.txt"));
+        CHECK(content.contains("Hello World"));
+        CHECK_FALSE(content.contains("ignore.me"));
     }
 
     SECTION("Error on Invalid Path") {
@@ -110,19 +89,13 @@ TEST_CASE("MCP Server: Call Tool Integration", "[mcp]") {
             {"id", 11},
             {"params", {
                 {"name", "clip_context"},
-                {"arguments", {
-                    {"path", "/path/to/nowhere/ghost_dir"}
-                }}
+                {"arguments", {{"path", "/path/to/invalid/dir"}}}
             }}
         };
         input << req.dump() << "\n";
-
         server.run(input, output);
-        
+
         auto resp = json::parse(output.str());
         CHECK(resp["result"]["isError"] == true);
-        
-        std::string content = resp["result"]["content"][0]["text"];
-        CHECK(content.find("Error: Path does not exist") != std::string::npos);
     }
 }

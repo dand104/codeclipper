@@ -1,7 +1,6 @@
 #include <catch2/catch_all.hpp>
-#include "PathFilter.hxx"
-#include "PathFilter.hxx"
-#include "RuntimeConfig.hxx"
+import std;
+import codeclipper;
 
 using namespace codeclipper;
 
@@ -25,5 +24,14 @@ TEST_CASE("PathFilter Logic", "[filter]") {
 
         CHECK_FALSE(filter.isIgnored(".gitignore", false));
         CHECK(filter.isIgnored(".idea", true));
+    }
+
+    SECTION("Only patterns filtering") {
+        config.onlyPatterns = {"src/*", "include/"};
+        PathFilter filter(config);
+
+        CHECK_FALSE(filter.isIgnored("src/app.cpp", false));
+        CHECK_FALSE(filter.isIgnored("include/header.h", false));
+        CHECK(filter.isIgnored("tests/test.cpp", false));
     }
 }

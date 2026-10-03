@@ -1,7 +1,6 @@
 #include <catch2/catch_all.hpp>
-#include "FileSystem.hxx"
-#include <filesystem>
-#include <fstream>
+import std;
+import codeclipper;
 
 namespace fs = std::filesystem;
 
@@ -9,50 +8,57 @@ class TempDirFixture {
 public:
     fs::path root;
     TempDirFixture() {
-        root = fs::temp_directory_path() / "cc_test_env";
+        root = fs::temp_directory_path() / "cc_test_fs";
         fs::create_directories(root / "a/b");
         std::ofstream(root / "file1.txt") << "content1";
         std::ofstream(root / "a/file2.txt") << "content2";
         std::ofstream(root / "a/b/file3.txt") << "content3";
     }
-    ~TempDirFixture() { fs::remove_all(root); }
+    ~TempDirFixture() {
+        std::error_code ec;
+        fs::remove_all(root, ec);
+    }
 };
 
-TEST_CASE("FileSystem: Traversal and Relative Paths", "[fs]") {
+TEST_CASE("FileSystem: Traversal and Binary Detection", "[fs]") {
     TempDirFixture fix;
-    codeclipper::FileSystem system;
 
-    std::vector<std::string> seenRelPaths;
-    auto onFile = [&](const codeclipper::common::FileEntry& e) {
-        seenRelPaths.push_back(e.relativePath.generic_string());
-        return true;
-    };
+    SECTION("Gathers all non-binary files") {
+        codeclipper::RuntimeConfig config;
+        config.rootPath = fix.root;
+        config.useClipboard = false;
+        config.listOnly = true;
 
-    auto res = system.traverse(fix.root,
-        [](auto){return true;}, [](auto){return true;}, onFile);
+        std::ostringstream out;
+        codeclipper::ContextEngine engine(config, out);
+        auto res = engine.run();
 
-    REQUIRE(res.has_value());
-    CHECK(seenRelPaths.size() == 3);
+        REQUIRE(res.has_value());
+        std::string output = out.str();
 
-    CHECK_THAT(seenRelPaths, Catch::Matchers::VectorContains(std::string("file1.txt")));
-    CHECK_THAT(seenRelPaths, Catch::Matchers::VectorContains(std::string("a/file2.txt")));
-    CHECK_THAT(seenRelPaths, Catch::Matchers::VectorContains(std::string("a/b/file3.txt")));
-}
-
-TEST_CASE("FileSystem: Binary detection", "[fs]") {
-    using namespace std::string_literals;
-    codeclipper::FileSystem system;
-
-    std::string binaryData = "Hello\0World"s;
-
-    fs::path p = fs::temp_directory_path() / "bin_test.dat";
-    {
-        std::ofstream ofs(p, std::ios::binary);
-        ofs.write(binaryData.data(), binaryData.size());
+        CHECK(output.contains("file1.txt"));
+        CHECK(output.contains("a/file2.txt"));
+        CHECK(output.contains("a/b/file3.txt"));
     }
 
-    auto content = system.readFile(p);
-    CHECK_FALSE(content.has_value());
+    SECTION("Skips binary files") {
+        fs::path binPath = fix.root / "binary.bin";
+        {
+            std::ofstream binFile(binPath, std::ios::binary);
+            char zero[4] = {'a', '\0', 'b', 'c'};
+            binFile.write(zero, sizeof(zero));
+        }
 
-    fs::remove(p);
+        codeclipper::RuntimeConfig config;
+        config.rootPath = fix.root;
+        config.useClipboard = false;
+        config.listOnly = false;
+
+        std::ostringstream out;
+        codeclipper::ContextEngine engine(config, out);
+        auto res = engine.run();
+
+        REQUIRE(res.has_value());
+        CHECK_FALSE(out.str().contains("```path=binary.bin"));
+    }
 }

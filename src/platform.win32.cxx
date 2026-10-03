@@ -1,7 +1,10 @@
-#include "Platform.hxx"
+module;
 #include <windows.h>
 
-namespace codeclipper {
+module codeclipper;
+import :platform;
+
+namespace codeclipper::platform {
     void setupConsole() {
         SetConsoleOutputCP(CP_UTF8);
         SetConsoleCP(CP_UTF8);
