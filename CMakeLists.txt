@@ -20,6 +20,10 @@ if(ENABLE_SANITIZER AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMP
         add_link_options(-fsanitize=address)
 endif()
 
+if(NOT CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE AND NOT FORCE_NOT_LTO)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+endif()
+
 # Coverage for gcov
 
     if(ENABLE_COVERAGE)
@@ -29,7 +33,7 @@ endif()
 
         find_program(LCOV_PATH lcov REQUIRED)
         find_program(GENHTML_PATH genhtml REQUIRED)
-        set(BUILD_TESTS ON)
+        set(BUILD_TESTING ON)
         add_compile_options(--coverage -g -O0)
         add_link_options(--coverage)
 
@@ -180,7 +184,7 @@ if(MSVC)
     target_sources(${CODECLIP_EXECUTABLE_NAME} PRIVATE src/resource.rc)
     target_compile_options(${CODECLIP_EXECUTABLE_NAME} PRIVATE /W4 /WX /permissive-)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${CODECLIP_EXECUTABLE_NAME})
-elseif(CLANG OR GCC)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(${CODECLIP_EXECUTABLE_NAME} PRIVATE -Wall -Wextra -Werror -pedantic)
 endif()
 
